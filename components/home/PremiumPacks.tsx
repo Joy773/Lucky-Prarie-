@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FiChevronRight,
   FiMapPin,
@@ -17,33 +16,115 @@ import { toast } from "react-toastify";
 import SectionWrapper from "@/components/layout/SectionWrapper";
 import { addToCart } from "@/store/features/cartSlice";
 import { useAppDispatch } from "@/store/hooks";
-import { premiumPackAssets } from "./assets";
 import { useHomeSearch } from "@/components/home/HomeSearchContext";
 import { filterProductsBySearchQuery } from "@/components/home/homeProductSearch";
+import type { ProductApiShape } from "@/models/products";
 
-const products = premiumPackAssets.map((asset, index) => ({
-  ...asset,
-  name: `Crush-it Hard Iced Tea ${12 + (index % 3) * 6} cans`,
-  size: "12 x 355 ml cans",
-  unit: "Pack",
-  price: Number((37.19 + index * 1.4).toFixed(2)),
-  category: "Beer",
-  description:
-    "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-}));
+type PremiumPackProduct = {
+  id: string;
+  src: string;
+  alt: string;
+  name: string;
+  size: string;
+  unit: string;
+  price: number;
+  category: string;
+  description: string;
+  stockQuantity: number;
+};
+
+function apiToPremiumPack(p: ProductApiShape): PremiumPackProduct {
+  const img = p.imageUrl?.trim() || "/pack-1.png";
+  return {
+    id: p.id,
+    src: img,
+    alt: p.name,
+    name: p.name,
+    size: p.quantity > 0 ? `${p.quantity} in stock` : "Out of stock",
+    unit: "each",
+    price: p.price,
+    category: p.category,
+    description: p.description.trim() || "No description yet.",
+    stockQuantity: p.quantity,
+  };
+}
+
+function parseProductsPayload(data: unknown): ProductApiShape[] | null {
+  if (typeof data !== "object" || data === null || !("products" in data)) {
+    return null;
+  }
+  const raw = (data as { products: unknown }).products;
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+  return raw as ProductApiShape[];
+}
+
+function imageUnoptimized(src: string): boolean {
+  return src.startsWith("data:") || src.startsWith("blob:");
+}
 
 export default function PremiumPacks() {
   const dispatch = useAppDispatch();
   const { query } = useHomeSearch();
+  const [products, setProducts] = useState<PremiumPackProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>(
-    Object.fromEntries(products.map((product) => [product.id, 1]))
-  );
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const response = await fetch("/api/products?firstAdded=5", {
+        cache: "no-store",
+      });
+      const data: unknown = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message =
+          typeof data === "object" &&
+          data !== null &&
+          "error" in data &&
+          typeof (data as { error: unknown }).error === "string"
+            ? (data as { error: string }).error
+            : "Could not load products.";
+        setLoadError(message);
+        setProducts([]);
+        return;
+      }
+      const list = parseProductsPayload(data);
+      if (!list) {
+        setLoadError("Invalid response from server.");
+        setProducts([]);
+        return;
+      }
+      const mapped = list.map(apiToPremiumPack);
+      setProducts(mapped);
+      setQuantities(Object.fromEntries(mapped.map((p) => [p.id, 1])));
+    } catch {
+      setLoadError("Could not reach the server.");
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   const increaseQty = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product || product.stockQuantity <= 0) {
+      return;
+    }
     setQuantities((prev) => ({
       ...prev,
-      [productId]: (prev[productId] ?? 1) + 1,
+      [productId]: Math.min(
+        product.stockQuantity,
+        (prev[productId] ?? 1) + 1
+      ),
     }));
   };
 
@@ -55,19 +136,23 @@ export default function PremiumPacks() {
   };
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
-    [selectedProductId]
+    [products, selectedProductId]
   );
 
   const filteredProducts = useMemo(
     () => filterProductsBySearchQuery(products, query),
-    [query]
+    [products, query]
   );
 
   const searchActive = query.trim().length > 0;
-  const handleAddToCart = (product: (typeof products)[number], quantity: number) => {
+  const handleAddToCart = (product: PremiumPackProduct, quantity: number) => {
+    if (product.stockQuantity <= 0) {
+      toast.error(`${product.name} is out of stock.`);
+      return;
+    }
     dispatch(
       addToCart({
-        id: `premium-${product.id}`,
+        id: product.id,
         name: product.name,
         price: product.price,
         image: product.src,
@@ -113,8 +198,12 @@ export default function PremiumPacks() {
         </div>
 
         <p className="mt-4 text-center text-sm text-slate-600 sm:text-left">
-          Showing {filteredProducts.length} of {products.length} products
-          {searchActive ? (
+          {loading
+            ? "Loading featured products…"
+            : loadError
+              ? loadError
+              : `Showing ${filteredProducts.length} of ${products.length} products`}
+          {!loading && !loadError && searchActive ? (
             <>
               {" "}
               for &quot;{query.trim()}&quot;
@@ -122,6 +211,24 @@ export default function PremiumPacks() {
           ) : null}
         </p>
 
+        {loadError && !loading ? (
+          <p className="mt-7 rounded-xl border border-red-200 bg-red-50/80 px-4 py-6 text-center text-sm text-red-800">
+            {loadError}{" "}
+            <button
+              type="button"
+              onClick={() => void loadProducts()}
+              className="mt-2 block w-full text-center font-semibold text-red-900 underline sm:mt-0 sm:inline sm:w-auto"
+            >
+              Retry
+            </button>
+          </p>
+        ) : null}
+
+        {!loading && !loadError && products.length === 0 && !searchActive ? (
+          <p className="mt-7 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
+            No products in the catalog yet. Browse the collection when items are available.
+          </p>
+        ) : !loading && !loadError ? (
         <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredProducts.map((product) => (
             <article
@@ -140,6 +247,7 @@ export default function PremiumPacks() {
                     src={product.src}
                     alt={product.alt}
                     fill
+                    unoptimized={imageUnoptimized(product.src)}
                     className="object-contain p-3 drop-shadow-xl"
                   />
                 </div>
@@ -208,6 +316,7 @@ export default function PremiumPacks() {
             </article>
           ))}
         </div>
+        ) : null}
 
         {searchActive && filteredProducts.length === 0 ? (
           <p className="mt-8 text-center text-sm text-slate-500">
@@ -236,6 +345,7 @@ export default function PremiumPacks() {
                   src={selectedProduct.src}
                   alt={selectedProduct.alt}
                   fill
+                  unoptimized={imageUnoptimized(selectedProduct.src)}
                   className="object-contain p-4"
                 />
               </div>

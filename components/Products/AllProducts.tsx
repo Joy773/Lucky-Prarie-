@@ -1,113 +1,132 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiMapPin, FiMinus, FiPackage, FiPlus, FiShoppingCart, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import SearchBar from "@/components/layout/SearchBar";
 import SectionWrapper from "@/components/layout/SectionWrapper";
+import type { ProductApiShape } from "@/models/products";
 import { addToCart } from "@/store/features/cartSlice";
 import { useAppDispatch } from "@/store/hooks";
 
-const products = [
-  {
-    id: "p1",
-    name: "Gatorade Fruit Punch Sports Drink",
-    size: "710 ml Bottle",
-    unit: "Bottle",
-    price: 4.5,
-    image: "/pack-1.png",
-    category: "Mix & Chips",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p2",
-    name: "Classic Whisky Reserve",
-    size: "750 ml Bottle",
-    unit: "Bottle",
-    price: 39.99,
-    image: "/pack-2.jpg",
-    category: "Spirits",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p3",
-    name: "Premium Lager Pack",
-    size: "12 x 355 ml cans",
-    unit: "Pack",
-    price: 24.5,
-    image: "/pack-3.jpg",
-    category: "Beer",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p4",
-    name: "Rose Wine Collection",
-    size: "750 ml Bottle",
-    unit: "Bottle",
-    price: 18.75,
-    image: "/pack-4.jpg",
-    category: "Wine",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p5",
-    name: "Sparkling Seltzer Mix",
-    size: "8 x 355 ml cans",
-    unit: "Pack",
-    price: 16.25,
-    image: "/pack-5.jpg",
-    category: "Ciders & Seltzers",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p6",
-    name: "Citrus Vodka Blend",
-    size: "700 ml Bottle",
-    unit: "Bottle",
-    price: 29.99,
-    image: "/pack-6.png",
-    category: "Spirits",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p7",
-    name: "Imported Beer Crate",
-    size: "24 x 330 ml bottles",
-    unit: "Crate",
-    price: 44.0,
-    image: "/pack-7.jpg",
-    category: "Beer",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-  {
-    id: "p8",
-    name: "Dry Red Wine",
-    size: "750 ml Bottle",
-    unit: "Bottle",
-    price: 21.95,
-    image: "/pack-8.jpg",
-    category: "Wine",
-    description:
-      "Premium quality product crafted with care and attention to detail. Each batch is carefully selected and tested to ensure the highest standards of quality and taste.",
-  },
-] as const;
+type ShopProduct = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  category: string;
+  size: string;
+  unit: string;
+  stockQuantity: number;
+};
 
-export default function AllProducts() {
+function apiToShop(p: ProductApiShape): ShopProduct {
+  const img = p.imageUrl?.trim() || "/pack-1.png";
+  return {
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    description: p.description.trim() || "No description yet.",
+    image: img,
+    category: p.category,
+    size: p.quantity > 0 ? `${p.quantity} in stock` : "Out of stock",
+    unit: "each",
+    stockQuantity: p.quantity,
+  };
+}
+
+function defaultQuantitiesFor(list: ShopProduct[]): Record<string, number> {
+  return Object.fromEntries(list.map((p) => [p.id, 1]));
+}
+
+type AllProductsProps = {
+  /** When set (e.g. from the server), skips client fetch and shows DB data immediately. */
+  initialProducts?: ProductApiShape[];
+};
+
+export default function AllProducts({ initialProducts }: AllProductsProps) {
   const dispatch = useAppDispatch();
+  const seededFromServer = initialProducts !== undefined;
+  const [products, setProducts] = useState<ShopProduct[]>(() =>
+    initialProducts ? initialProducts.map(apiToShop) : []
+  );
+  const [loading, setLoading] = useState(!seededFromServer);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>(
-    Object.fromEntries(products.map((product) => [product.id, 1]))
+  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
+    initialProducts ? defaultQuantitiesFor(initialProducts.map(apiToShop)) : {}
   );
+
+  useEffect(() => {
+    if (seededFromServer) {
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/products", {
+          cache: "no-store",
+        });
+        const data: unknown = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const message =
+            typeof data === "object" &&
+            data !== null &&
+            "error" in data &&
+            typeof (data as { error: unknown }).error === "string"
+              ? (data as { error: string }).error
+              : "Could not load products.";
+          if (!cancelled) {
+            setProducts([]);
+            toast.error(message);
+          }
+          return;
+        }
+
+        if (
+          typeof data !== "object" ||
+          data === null ||
+          !("products" in data) ||
+          !Array.isArray((data as { products: unknown }).products)
+        ) {
+          if (!cancelled) {
+            setProducts([]);
+            toast.error("Invalid product list from server.");
+          }
+          return;
+        }
+
+        const list = (data as { products: ProductApiShape[] }).products.map(apiToShop);
+        if (!cancelled) {
+          setProducts(list);
+          setQuantities((prev) => {
+            const next = { ...prev };
+            for (const p of list) {
+              if (next[p.id] === undefined) next[p.id] = 1;
+            }
+            return next;
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setProducts([]);
+          toast.error("Could not reach the server.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [seededFromServer]);
 
   const increaseQty = (id: string) => {
     setQuantities((prev) => ({ ...prev, [id]: (prev[id] ?? 1) + 1 }));
@@ -127,22 +146,30 @@ export default function AllProducts() {
       const category = product.category.toLowerCase();
       const size = product.size.toLowerCase();
       const unit = product.unit.toLowerCase();
+      const desc = product.description.toLowerCase();
       return (
         name.includes(query) ||
         category.includes(query) ||
         size.includes(query) ||
-        unit.includes(query)
+        unit.includes(query) ||
+        desc.includes(query)
       );
     });
-  }, [searchQuery]);
+  }, [products, searchQuery]);
+
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
-    [selectedProductId]
+    [products, selectedProductId]
   );
-  const handleAddToCart = (product: (typeof products)[number], quantity: number) => {
+
+  const handleAddToCart = (product: ShopProduct, quantity: number) => {
+    if (product.stockQuantity <= 0) {
+      toast.error(`${product.name} is out of stock.`);
+      return;
+    }
     dispatch(
       addToCart({
-        id: `all-${product.id}`,
+        id: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -160,9 +187,13 @@ export default function AllProducts() {
       <SectionWrapper className="max-w-[1280px] py-8">
         <SearchBar value={searchQuery} onChange={setSearchQuery} id="products-search" />
 
-        <p className="mt-8 text-center text-md text-slate-600">
-          Showing {filteredProducts.length} of {products.length} products
-        </p>
+        {loading ? (
+          <p className="mt-8 text-center text-md text-slate-600">Loading products…</p>
+        ) : (
+          <p className="mt-8 text-center text-md text-slate-600">
+            Showing {filteredProducts.length} of {products.length} products
+          </p>
+        )}
 
         <div className="mt-8 grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-4">
           {filteredProducts.map((product) => (
@@ -177,6 +208,7 @@ export default function AllProducts() {
                     src={product.image}
                     alt={product.name}
                     fill
+                    unoptimized={product.image.startsWith("data:")}
                     className="object-contain p-2"
                   />
                 </div>
@@ -236,7 +268,8 @@ export default function AllProducts() {
                     event.stopPropagation();
                     handleAddToCart(product, quantities[product.id] ?? 1);
                   }}
-                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-md font-medium text-white transition-opacity hover:opacity-90"
+                  disabled={product.stockQuantity <= 0}
+                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2 text-md font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FiShoppingCart />
                   Add to Cart
@@ -246,7 +279,13 @@ export default function AllProducts() {
           ))}
         </div>
 
-        {filteredProducts.length === 0 && (
+        {!loading && products.length === 0 && (
+          <p className="mt-8 text-center text-sm text-slate-500">
+            No products available yet. Check back soon.
+          </p>
+        )}
+
+        {!loading && products.length > 0 && filteredProducts.length === 0 && (
           <p className="mt-8 text-center text-sm text-slate-500">
             No products found for &quot;{searchQuery}&quot;.
           </p>
@@ -273,6 +312,7 @@ export default function AllProducts() {
                   src={selectedProduct.image}
                   alt={selectedProduct.name}
                   fill
+                  unoptimized={selectedProduct.image.startsWith("data:")}
                   className="object-contain p-4"
                 />
               </div>
@@ -340,7 +380,8 @@ export default function AllProducts() {
                   onClick={() =>
                     handleAddToCart(selectedProduct, quantities[selectedProduct.id] ?? 1)
                   }
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-base font-medium text-white transition-opacity hover:opacity-90"
+                  disabled={selectedProduct.stockQuantity <= 0}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-base font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <FiShoppingCart />
                   Add to Cart ({quantities[selectedProduct.id] ?? 1})

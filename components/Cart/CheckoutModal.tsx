@@ -25,6 +25,7 @@ export default function CheckoutModal({ open, onClose }: CheckoutModalProps) {
   const [city, setCity] = useState("");
   const [zip, setZip] = useState("");
   const [country, setCountry] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -52,7 +53,7 @@ export default function CheckoutModal({ open, onClose }: CheckoutModalProps) {
     };
   }, [open, onClose]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.checkValidity()) {
@@ -74,6 +75,21 @@ export default function CheckoutModal({ open, onClose }: CheckoutModalProps) {
       return;
     }
 
+    if (cartItems.length === 0) {
+      toast.error("Your cart is empty.");
+      return;
+    }
+
+    const billing = {
+      name: `${firstName.trim()} ${lastName.trim()}`,
+      email: email.trim(),
+      telephone: telephone.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      postalCode: zip.trim(),
+      country,
+    };
+
     const lineItems = cartItems.map((item) => ({
       id: item.id,
       name: item.name,
@@ -82,24 +98,60 @@ export default function CheckoutModal({ open, onClose }: CheckoutModalProps) {
       lineTotal: item.price * item.quantity,
     }));
 
-    dispatch(
-      placeOrder({
-        billing: {
-          name: `${firstName.trim()} ${lastName.trim()}`,
-          email: email.trim(),
-          telephone: telephone.trim(),
-          address: address.trim(),
-          city: city.trim(),
-          postalCode: zip.trim(),
-          country,
-        },
-        items: lineItems,
-      })
-    );
-    dispatch(clearCart());
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billing, items: lineItems }),
+      });
 
-    toast.success("Form submitted");
-    onClose();
+      const data: unknown = await response.json().catch(() => ({}));
+      const message =
+        typeof data === "object" &&
+        data !== null &&
+        "error" in data &&
+        typeof (data as { error: unknown }).error === "string"
+          ? (data as { error: string }).error
+          : "Could not place order.";
+
+      if (!response.ok) {
+        toast.error(message);
+        return;
+      }
+
+      const orderPayload =
+        typeof data === "object" &&
+        data !== null &&
+        "order" in data &&
+        typeof (data as { order: unknown }).order === "object" &&
+        (data as { order: unknown }).order !== null
+          ? (data as { order: Record<string, unknown> }).order
+          : null;
+
+      if (!orderPayload || typeof orderPayload.id !== "string") {
+        toast.error("Invalid response from server.");
+        return;
+      }
+
+      dispatch(
+        placeOrder({
+          billing,
+          items: lineItems,
+          id: orderPayload.id,
+          placedAt:
+            typeof orderPayload.placedAt === "string" ? orderPayload.placedAt : undefined,
+        })
+      );
+      dispatch(clearCart());
+
+      toast.success("Order placed successfully.");
+      onClose();
+    } catch {
+      toast.error("Could not reach the server. Try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!open) {
@@ -278,9 +330,10 @@ export default function CheckoutModal({ open, onClose }: CheckoutModalProps) {
                 <div className="mt-8 flex justify-center">
                   <button
                     type="submit"
-                    className="min-h-11 w-full rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition-opacity hover:opacity-95 sm:w-auto"
+                    disabled={isSubmitting}
+                    className="min-h-11 w-full rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
-                    Submit
+                    {isSubmitting ? "Submitting…" : "Submit"}
                   </button>
                 </div>
               </form>

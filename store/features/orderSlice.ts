@@ -24,6 +24,10 @@ export type PlacedOrder = OrderDetails & {
   placedAt: string;
   items: OrderLineItem[];
   orderTotal: number;
+  /** Set when an admin assigns a delivery driver (MongoDB driver document id). */
+  assignedDriverId?: string;
+  assignedDriverUuid?: string;
+  assignedDriverName?: string;
 };
 
 export type OrdersState = {
@@ -51,14 +55,19 @@ const orderSlice = createSlice({
   reducers: {
     placeOrder: (
       state,
-      action: PayloadAction<{ billing: OrderDetails; items: OrderLineItem[] }>
+      action: PayloadAction<{
+        billing: OrderDetails;
+        items: OrderLineItem[];
+        id?: string;
+        placedAt?: string;
+      }>
     ) => {
-      const { billing, items } = action.payload;
+      const { billing, items, id, placedAt } = action.payload;
       const orderTotal = sumLineTotals(items);
       state.orders.unshift({
         ...billing,
-        id: newOrderId(),
-        placedAt: new Date().toISOString(),
+        id: id ?? newOrderId(),
+        placedAt: placedAt ?? new Date().toISOString(),
         items,
         orderTotal,
       });
