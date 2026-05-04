@@ -10,7 +10,11 @@ function normalizePath(pathname: string): string {
 
 function isPublicAdminPath(pathname: string): boolean {
   const p = normalizePath(pathname);
-  return p === "/admin" || p === "/api/admin/login";
+  return (
+    p === "/admin" ||
+    p === "/api/admin/login" ||
+    p === "/api/admin/logout"
+  );
 }
 
 /** Checkout must stay public; admin order list uses GET on the same path. */
