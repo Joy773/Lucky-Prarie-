@@ -27,7 +27,7 @@ function parseOrdersPayload(data: unknown): PlacedOrder[] | null {
 }
 
 const assignDriverButtonClass =
-  "mt-4 inline-flex w-full items-center justify-center rounded-full border-4 border-double border-fuchsia-300 bg-fuchsia-50/95 px-5 py-2.5 text-sm font-bold text-fuchsia-900 shadow-[inset_0_0_0_1px_rgba(217,70,239,0.15)] transition-colors hover:bg-fuchsia-100/90 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 sm:w-auto";
+  "mt-4 inline-flex w-full max-w-md items-center justify-center rounded-full border-4 border-double border-fuchsia-300 bg-fuchsia-50/95 px-4 py-2 text-xs font-bold text-fuchsia-900 shadow-[inset_0_0_0_1px_rgba(217,70,239,0.15)] transition-colors hover:bg-fuchsia-100/90 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 sm:w-auto sm:max-w-none sm:px-5 sm:py-2.5 sm:text-sm lg:max-w-sm xl:max-w-md";
 
 export default function AllOrders() {
   const [orders, setOrders] = useState<PlacedOrder[]>([]);
@@ -76,7 +76,11 @@ export default function AllOrders() {
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading orders…</p>;
+    return (
+      <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
+        Loading orders…
+      </p>
+    );
   }
 
   if (error) {
@@ -110,42 +114,44 @@ export default function AllOrders() {
         onClose={() => setAssignOrderId(null)}
         onAssigned={() => void load()}
       />
-      <ul className="space-y-5">
+      <ul className="space-y-5 md:space-y-6">
       {orders.map((order) => (
         <li
           key={order.id}
           className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
         >
-          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+          <div className="grid grid-cols-1 gap-4 border-b border-slate-100 bg-slate-50/80 px-4 py-4 sm:grid-cols-3 sm:items-end sm:gap-6 sm:px-5">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Order ID
               </p>
-              <p className="font-mono text-sm font-medium text-slate-900">{order.id}</p>
+              <p className="mt-1 break-all font-mono text-xs font-medium leading-snug text-slate-900 sm:text-sm">
+                {order.id}
+              </p>
             </div>
-            <div className="text-left sm:text-right">
+            <div className="min-w-0 sm:text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Placed
               </p>
-              <p className="text-sm text-slate-800">{formatPlacedAt(order.placedAt)}</p>
+              <p className="mt-1 text-sm text-slate-800">{formatPlacedAt(order.placedAt)}</p>
             </div>
-            <div className="text-left sm:text-right">
+            <div className="min-w-0 sm:text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Total
               </p>
-              <p className="text-lg font-bold text-fuchsia-600">
+              <p className="mt-1 text-xl font-bold tabular-nums text-fuchsia-600 sm:text-2xl">
                 ${order.orderTotal.toFixed(2)}
               </p>
             </div>
           </div>
 
-          <div className="grid gap-6 p-4 sm:grid-cols-2 sm:p-5">
-            <div>
+          <div className="grid grid-cols-1 gap-6 p-4 sm:p-5 lg:grid-cols-2 lg:gap-8 lg:items-start">
+            <div className="min-w-0">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Customer
               </h3>
-              <p className="mt-2 font-semibold text-slate-900">{order.name}</p>
-              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+              <p className="mt-2 break-words font-semibold text-slate-900">{order.name}</p>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
                 <li>
                   <span className="text-slate-500">Email: </span>
                   <a
@@ -159,19 +165,21 @@ export default function AllOrders() {
                   <span className="text-slate-500">Phone: </span>
                   {order.telephone}
                 </li>
-                <li className="pt-1 leading-relaxed">
+                <li className="break-words pt-1 leading-relaxed">
                   <span className="text-slate-500">Address: </span>
                   {order.address}, {order.city} {order.postalCode}, {order.country}
                 </li>
               </ul>
               {order.assignedDriverName ? (
-                <div className="mt-4 rounded-xl border border-fuchsia-100 bg-fuchsia-50/60 px-3 py-2 text-sm">
+                <div className="mt-4 rounded-xl border border-fuchsia-100 bg-fuchsia-50/60 px-3 py-2.5 text-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-800">
                     Assigned driver
                   </p>
-                  <p className="mt-1 font-semibold text-slate-900">{order.assignedDriverName}</p>
+                  <p className="mt-1 break-words font-semibold text-slate-900">
+                    {order.assignedDriverName}
+                  </p>
                   {order.assignedDriverUuid && order.assignedDriverUuid !== "—" ? (
-                    <p className="mt-0.5 font-mono text-xs text-slate-600">
+                    <p className="mt-1 break-all font-mono text-[11px] leading-snug text-slate-600 sm:text-xs">
                       {order.assignedDriverUuid}
                     </p>
                   ) : null}
@@ -186,29 +194,33 @@ export default function AllOrders() {
               </button>
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 lg:min-w-[min(100%,28rem)]">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Line items
               </h3>
-              <div className="mt-2 overflow-x-auto rounded-lg border border-slate-100">
-                <table className="w-full min-w-[280px] text-left text-sm">
+              <div className="mt-2 overflow-x-auto rounded-lg border border-slate-100 [-webkit-overflow-scrolling:touch]">
+                <table className="w-full min-w-[320px] text-left text-xs sm:min-w-[360px] sm:text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      <th className="px-3 py-2">Product</th>
-                      <th className="px-3 py-2 text-right">Qty</th>
-                      <th className="px-3 py-2 text-right">Price</th>
-                      <th className="px-3 py-2 text-right">Line</th>
+                    <tr className="border-b border-slate-100 bg-slate-50/90 text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                      <th className="px-2 py-2 sm:px-3">Product</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right sm:px-3">Qty</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right sm:px-3">Price</th>
+                      <th className="whitespace-nowrap px-2 py-2 text-right sm:px-3">Line</th>
                     </tr>
                   </thead>
                   <tbody>
                     {order.items.map((item) => (
                       <tr key={`${order.id}-${item.id}`} className="border-b border-slate-50 last:border-0">
-                        <td className="px-3 py-2 font-medium text-slate-900">{item.name}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">{item.quantity}</td>
-                        <td className="px-3 py-2 text-right text-slate-600">
+                        <td className="max-w-[11rem] px-2 py-2 font-medium text-slate-900 sm:max-w-none sm:px-3">
+                          <span className="line-clamp-3 sm:line-clamp-none">{item.name}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-600 sm:px-3">
+                          {item.quantity}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-600 sm:px-3">
                           ${item.unitPrice.toFixed(2)}
                         </td>
-                        <td className="px-3 py-2 text-right font-medium text-slate-900">
+                        <td className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums text-slate-900 sm:px-3">
                           ${item.lineTotal.toFixed(2)}
                         </td>
                       </tr>

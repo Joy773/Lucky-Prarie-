@@ -139,14 +139,14 @@ export default function InventoryProducts() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex justify-start">
         <button
           type="button"
           onClick={() => setModal({ kind: "add" })}
-          className="inline-flex items-center gap-2 rounded-lg bg-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-fuchsia-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
         >
-          <FiPlus className="text-lg" aria-hidden />
+          <FiPlus className="text-base sm:text-lg" aria-hidden />
           Add Product
         </button>
       </div>
@@ -184,7 +184,7 @@ export default function InventoryProducts() {
           No products yet. Add one with the button above.
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
             <li key={product.id}>
               <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">

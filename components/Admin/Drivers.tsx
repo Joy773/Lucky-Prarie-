@@ -95,14 +95,14 @@ export default function Drivers() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex justify-start">
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-fuchsia-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-fuchsia-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
         >
-          <FiPlus className="text-lg" aria-hidden />
+          <FiPlus className="text-base sm:text-lg" aria-hidden />
           Create new driver
         </button>
       </div>
@@ -122,7 +122,9 @@ export default function Drivers() {
       />
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading drivers…</p>
+        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center text-sm text-slate-500">
+          Loading drivers…
+        </p>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-800">
           <p>{error}</p>
@@ -139,61 +141,117 @@ export default function Drivers() {
           No drivers yet. Add one with the button above.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/90">
-                <th className="px-4 py-3 font-semibold text-slate-700 sm:px-5">Name</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 sm:px-5">Age</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 sm:px-5">UUID</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 sm:px-5">Status</th>
-                <th className="px-4 py-3 font-semibold text-slate-700 sm:px-5">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {drivers.map((driver) => (
-                <tr key={driver.id} className="bg-white">
-                  <td className="px-4 py-3 font-medium text-slate-900 sm:px-5">
-                    {driver.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 sm:px-5">{driver.age}</td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600 sm:px-5">
-                    {driver.uuid}
-                  </td>
-                  <td className="px-4 py-3 sm:px-5">
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+        <>
+          <ul className="space-y-3 md:hidden">
+            {drivers.map((driver) => (
+              <li key={driver.id}>
+                <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900">{driver.name}</p>
+                      <p className="mt-1 text-sm text-slate-600">Age {driver.age}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                       {driver.status}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 sm:px-5">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditingDriver(driver)}
-                        disabled={deletingId === driver.id}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-fuchsia-200 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <FiEdit2 className="text-sm" aria-hidden />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(driver)}
-                        disabled={deletingId === driver.id}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <FiTrash2 className="text-sm" aria-hidden />
-                        {deletingId === driver.id ? "Deleting…" : "Delete"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                  <p className="mt-3 break-all font-mono text-[11px] leading-snug text-slate-600">
+                    <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      UUID{" "}
+                    </span>
+                    {driver.uuid}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDriver(driver)}
+                      disabled={deletingId === driver.id}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:flex-none"
+                    >
+                      <FiEdit2 className="text-sm" aria-hidden />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(driver)}
+                      disabled={deletingId === driver.id}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 sm:flex-none"
+                    >
+                      <FiTrash2 className="text-sm" aria-hidden />
+                      {deletingId === driver.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden min-w-0 md:block">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch]">
+              <table className="w-full min-w-[640px] text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/90">
+                    <th className="px-3 py-3 font-semibold text-slate-700 sm:px-5">Name</th>
+                    <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
+                      Age
+                    </th>
+                    <th className="min-w-[12rem] px-3 py-3 font-semibold text-slate-700 sm:min-w-[14rem] sm:px-5">
+                      UUID
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
+                      Status
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {drivers.map((driver) => (
+                    <tr key={driver.id} className="bg-white">
+                      <td className="max-w-[10rem] px-3 py-3 font-medium text-slate-900 sm:max-w-none sm:px-5">
+                        <span className="break-words">{driver.name}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 tabular-nums text-slate-700 sm:px-5">
+                        {driver.age}
+                      </td>
+                      <td className="max-w-[14rem] break-all px-3 py-3 font-mono text-[11px] leading-snug text-slate-600 sm:max-w-[18rem] sm:px-5 sm:text-xs">
+                        {driver.uuid}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 sm:px-5">
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                          {driver.status}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 sm:px-5">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingDriver(driver)}
+                            disabled={deletingId === driver.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-fuchsia-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <FiEdit2 className="text-sm" aria-hidden />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(driver)}
+                            disabled={deletingId === driver.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <FiTrash2 className="text-sm" aria-hidden />
+                            {deletingId === driver.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
