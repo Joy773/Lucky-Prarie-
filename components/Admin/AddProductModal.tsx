@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { FiX } from "react-icons/fi";
+import { FiStar, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 
 export type AdminProductDraft = {
@@ -19,6 +19,7 @@ export type AdminProductDraft = {
   quantity: number;
   price: number;
   category: string;
+  premium?: boolean;
   description?: string;
   imageUrl?: string;
 };
@@ -96,6 +97,9 @@ export default function AddProductModal({
   const [category, setCategory] = useState(
     () => (mode === "edit" && product ? product.category : "")
   );
+  const [premium, setPremium] = useState(
+    () => (mode === "edit" && product ? Boolean(product.premium) : false)
+  );
   const [categories, setCategories] = useState<string[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,6 +116,7 @@ export default function AddProductModal({
     setPrice("");
     setDescription("");
     setCategory("");
+    setPremium(false);
     setBaselineImageSrc(null);
     setImagePreviewUrl((prev) => {
       if (prev) {
@@ -154,7 +159,8 @@ export default function AddProductModal({
       return;
     }
     setCategory(mode === "edit" && product ? product.category : "");
-  }, [open, mode, product?.id, product?.category]);
+    setPremium(mode === "edit" && product ? Boolean(product.premium) : false);
+  }, [open, mode, product]);
 
   useEffect(() => {
     if (!open) {
@@ -237,9 +243,10 @@ export default function AddProductModal({
         description: description.trim(),
         imageUrl,
         category,
+        premium,
       };
 
-      const response = await fetch("/api/admin/products", {
+      const response = await fetch("/api/products", {
         method: isEdit ? "PATCH" : "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -385,6 +392,32 @@ export default function AddProductModal({
                 )}
               </select>
             </label>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">Premium</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Mark this product as premium.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPremium((p) => !p)}
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-fuchsia-200 ${
+                  premium
+                    ? "border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+                aria-pressed={premium}
+                aria-label={premium ? "Unset premium product" : "Set as premium product"}
+              >
+                <FiStar
+                  className={`text-base ${premium ? "fill-current" : ""}`}
+                  aria-hidden
+                />
+                {premium ? "Premium" : "Not premium"}
+              </button>
+            </div>
 
             <label className="block">
               <span className={labelClassName}>Name</span>

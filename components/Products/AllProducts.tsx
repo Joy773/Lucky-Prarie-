@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { FiMapPin, FiMinus, FiPackage, FiPlus, FiShoppingCart, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import SearchBar from "@/components/layout/SearchBar";
@@ -48,6 +49,8 @@ type AllProductsProps = {
 
 export default function AllProducts({ initialProducts }: AllProductsProps) {
   const dispatch = useAppDispatch();
+  const searchParams = useSearchParams();
+  const selectedCategory = (searchParams.get("category") ?? "").trim();
   const seededFromServer = initialProducts !== undefined;
   const [products, setProducts] = useState<ShopProduct[]>(() =>
     initialProducts ? initialProducts.map(apiToShop) : []
@@ -138,10 +141,13 @@ export default function AllProducts({ initialProducts }: AllProductsProps) {
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) {
-      return products;
-    }
     return products.filter((product) => {
+      if (selectedCategory && product.category !== selectedCategory) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
       const name = product.name.toLowerCase();
       const category = product.category.toLowerCase();
       const size = product.size.toLowerCase();
@@ -155,7 +161,7 @@ export default function AllProducts({ initialProducts }: AllProductsProps) {
         desc.includes(query)
       );
     });
-  }, [products, searchQuery]);
+  }, [products, searchQuery, selectedCategory]);
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,

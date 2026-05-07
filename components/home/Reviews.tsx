@@ -64,14 +64,12 @@ export default function Reviews() {
   }, []);
 
   const maxStartIndex = Math.max(0, customerReviews.length - visibleCount);
+  const clampedStartIndex = Math.min(startIndex, maxStartIndex);
 
-  useEffect(() => {
-    setStartIndex((prev) => Math.min(prev, maxStartIndex));
-  }, [maxStartIndex]);
-
-  const handlePrev = () => setStartIndex((prev) => Math.max(0, prev - 1));
+  const handlePrev = () =>
+    setStartIndex((prev) => Math.max(0, Math.min(prev, maxStartIndex) - 1));
   const handleNext = () =>
-    setStartIndex((prev) => Math.min(maxStartIndex, prev + 1));
+    setStartIndex((prev) => Math.min(maxStartIndex, Math.min(prev, maxStartIndex) + 1));
 
   return (
     <section className="w-full bg-[#F9FAFB] py-14">
@@ -88,7 +86,7 @@ export default function Reviews() {
         <button
           type="button"
           onClick={handlePrev}
-          disabled={startIndex === 0}
+          disabled={clampedStartIndex === 0}
           aria-label="Previous reviews"
           className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex"
         >
@@ -99,7 +97,7 @@ export default function Reviews() {
           <div
             className="-mx-2 flex transition-transform duration-500 ease-out"
             style={{
-              transform: `translateX(-${startIndex * (100 / visibleCount)}%)`,
+              transform: `translateX(-${clampedStartIndex * (100 / visibleCount)}%)`,
             }}
           >
             {customerReviews.map((item) => (
@@ -151,7 +149,7 @@ export default function Reviews() {
         <button
           type="button"
           onClick={handleNext}
-          disabled={startIndex === maxStartIndex}
+          disabled={clampedStartIndex === maxStartIndex}
           aria-label="Next reviews"
           className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex"
         >
@@ -164,7 +162,7 @@ export default function Reviews() {
             <span
               key={index}
               className={
-                index === startIndex
+                index === clampedStartIndex
                   ? "h-1.5 w-6 rounded-full bg-blue-500"
                   : "h-1.5 w-1.5 rounded-full bg-slate-300"
               }

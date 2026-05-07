@@ -77,7 +77,7 @@ export default function PremiumPacks() {
     setLoading(true);
     setLoadError(null);
     try {
-      const response = await fetch("/api/products?firstAdded=5", {
+      const response = await fetch("/api/products?premium=true&limit=12", {
         cache: "no-store",
       });
       const data: unknown = await response.json().catch(() => ({}));
@@ -99,7 +99,7 @@ export default function PremiumPacks() {
         setProducts([]);
         return;
       }
-      const mapped = list.map(apiToPremiumPack);
+      const mapped = list.filter((p) => p.premium).map(apiToPremiumPack);
       setProducts(mapped);
       setQuantities(Object.fromEntries(mapped.map((p) => [p.id, 1])));
     } catch {

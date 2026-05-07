@@ -50,3 +50,24 @@ export async function listFirstAddedStorefrontProducts(
     })
   );
 }
+
+/** Premium products for home “Premium Picks”. */
+export async function listPremiumStorefrontProducts(
+  limit = 200
+): Promise<ProductApiShape[]> {
+  const capped = Math.min(200, Math.max(1, Math.floor(limit)));
+  const client = await clientPromise;
+  const db = client.db(getDbName());
+  const cursor = db
+    .collection<ProductRecord>(PRODUCTS_COLLECTION)
+    .find({ premium: true })
+    .sort({ createdAt: -1 })
+    .limit(capped);
+  const docs = await cursor.toArray();
+  return docs.map((doc) =>
+    documentToProductApi({
+      ...doc,
+      imageUrl: doc.imageUrl ?? "",
+    })
+  );
+}

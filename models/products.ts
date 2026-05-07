@@ -32,6 +32,8 @@ export type ProductRecord = {
   quantity: number;
   /** Public URL or data URL (`data:image/...;base64,...`) for the product image. */
   imageUrl: string;
+  /** Premium products are highlighted in the storefront. */
+  premium?: boolean;
   /** One of {@link PRODUCT_CATEGORIES}; may be missing on legacy documents. */
   category?: string;
   createdAt: Date;
@@ -44,6 +46,7 @@ export type CreateProductBody = {
   description: string;
   quantity: number;
   imageUrl: string;
+  premium: boolean;
   category: ProductCategory;
 };
 
@@ -58,6 +61,7 @@ export type ProductApiShape = {
   description: string;
   quantity: number;
   imageUrl: string;
+  premium: boolean;
   category: ProductCategory;
   createdAt: string;
   updatedAt: string;
@@ -111,6 +115,8 @@ export function parseCreateProductBody(body: unknown):
     return { ok: false, error: "A valid category is required." };
   }
 
+  const premium = typeof o.premium === "boolean" ? o.premium : false;
+
   return {
     ok: true,
     data: {
@@ -119,6 +125,7 @@ export function parseCreateProductBody(body: unknown):
       quantity: o.quantity,
       price: o.price,
       imageUrl,
+      premium,
       category: rawCategory,
     },
   };
@@ -176,6 +183,7 @@ export function documentToProductApi(doc: WithId<ProductRecord>): ProductApiShap
     description: doc.description,
     quantity: doc.quantity,
     imageUrl: doc.imageUrl ?? "",
+    premium: Boolean(doc.premium),
     category,
     createdAt:
       doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt),

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiEdit2, FiPlus, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import CreateDriver from "@/components/Admin/CreateDriver";
 import EditDriver from "@/components/Admin/EditDriver";
+import SearchBar from "@/components/layout/SearchBar";
 import { parseDriversListPayload, type DriverApiShape } from "@/models/drivers";
 
 export default function Drivers() {
@@ -14,6 +15,24 @@ export default function Drivers() {
   const [drivers, setDrivers] = useState<DriverApiShape[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredDrivers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return drivers;
+    return drivers.filter((driver) => {
+      const name = driver.name.toLowerCase();
+      const uuid = driver.uuid.toLowerCase();
+      const status = driver.status.toLowerCase();
+      const age = String(driver.age);
+      return (
+        name.includes(q) ||
+        uuid.includes(q) ||
+        status.includes(q) ||
+        age.includes(q)
+      );
+    });
+  }, [drivers, searchQuery]);
 
   const loadDrivers = useCallback(async () => {
     setLoading(true);
@@ -96,7 +115,7 @@ export default function Drivers() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="flex justify-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
@@ -105,6 +124,14 @@ export default function Drivers() {
           <FiPlus className="text-base sm:text-lg" aria-hidden />
           Create new driver
         </button>
+
+        <div className="w-full sm:max-w-md">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            id="admin-drivers-search"
+          />
+        </div>
       </div>
 
       <CreateDriver
@@ -140,10 +167,21 @@ export default function Drivers() {
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
           No drivers yet. Add one with the button above.
         </p>
+      ) : filteredDrivers.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
+          <p>No drivers found for &quot;{searchQuery.trim()}&quot;.</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            Clear search
+          </button>
+        </div>
       ) : (
         <>
           <ul className="space-y-3 md:hidden">
-            {drivers.map((driver) => (
+            {filteredDrivers.map((driver) => (
               <li key={driver.id}>
                 <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -155,6 +193,12 @@ export default function Drivers() {
                       {driver.status}
                     </span>
                   </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Completed{" "}
+                    </span>
+                    0
+                  </p>
                   <p className="mt-3 break-all font-mono text-[11px] leading-snug text-slate-600">
                     <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                       UUID{" "}
@@ -174,7 +218,7 @@ export default function Drivers() {
                     <button
                       type="button"
                       onClick={() => void handleDelete(driver)}
-                      disabled={deletingId === driver.id}
+                      disabled={deletingId === driver.id || driver.status.toLowerCase() === "busy"}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50 sm:flex-none"
                     >
                       <FiTrash2 className="text-sm" aria-hidden />
@@ -199,6 +243,9 @@ export default function Drivers() {
                       UUID
                     </th>
                     <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
+                      Completed
+                    </th>
+                    <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
                       Status
                     </th>
                     <th className="whitespace-nowrap px-3 py-3 font-semibold text-slate-700 sm:px-5">
@@ -207,7 +254,7 @@ export default function Drivers() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {drivers.map((driver) => (
+                  {filteredDrivers.map((driver) => (
                     <tr key={driver.id} className="bg-white">
                       <td className="max-w-[10rem] px-3 py-3 font-medium text-slate-900 sm:max-w-none sm:px-5">
                         <span className="break-words">{driver.name}</span>
@@ -217,6 +264,9 @@ export default function Drivers() {
                       </td>
                       <td className="max-w-[14rem] break-all px-3 py-3 font-mono text-[11px] leading-snug text-slate-600 sm:max-w-[18rem] sm:px-5 sm:text-xs">
                         {driver.uuid}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 tabular-nums text-slate-700 sm:px-5">
+                        0
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 sm:px-5">
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
@@ -237,7 +287,7 @@ export default function Drivers() {
                           <button
                             type="button"
                             onClick={() => void handleDelete(driver)}
-                            disabled={deletingId === driver.id}
+                            disabled={deletingId === driver.id || driver.status.toLowerCase() === "busy"}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <FiTrash2 className="text-sm" aria-hidden />

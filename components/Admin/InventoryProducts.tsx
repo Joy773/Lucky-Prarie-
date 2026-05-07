@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiEdit2, FiPlus, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import AddProductModal, {
   type AdminProductDraft,
 } from "@/components/Admin/AddProductModal";
+import SearchBar from "@/components/layout/SearchBar";
 import type { ProductApiShape } from "@/models/products";
 
 const PLACEHOLDER_IMAGE = "/banner.png";
@@ -26,6 +27,7 @@ function productApiToDraft(p: ProductApiShape): AdminProductDraft {
     quantity: p.quantity,
     price: p.price,
     category: p.category,
+    premium: p.premium,
     description: p.description,
     imageUrl,
   };
@@ -48,6 +50,33 @@ export default function InventoryProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const pageSize = 10;
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = p.name.toLowerCase();
+      const category = p.category.toLowerCase();
+      const description = (p.description ?? "").toLowerCase();
+      return (
+        name.includes(q) ||
+        category.includes(q) ||
+        description.includes(q) ||
+        p.price.toFixed(2).includes(q)
+      );
+    });
+  }, [products, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
+  const pagedProducts = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, safePage]);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -79,6 +108,7 @@ export default function InventoryProducts() {
       }
 
       setProducts(list.map(productApiToDraft));
+      setPage(1);
     } catch {
       setError("Could not reach the server.");
       setProducts([]);
@@ -90,6 +120,10 @@ export default function InventoryProducts() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const handleDelete = useCallback(
     async (product: AdminProductDraft) => {
@@ -140,7 +174,7 @@ export default function InventoryProducts() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="flex justify-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => setModal({ kind: "add" })}
@@ -149,6 +183,14 @@ export default function InventoryProducts() {
           <FiPlus className="text-base sm:text-lg" aria-hidden />
           Add Product
         </button>
+
+        <div className="w-full sm:max-w-md">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            id="admin-products-search"
+          />
+        </div>
       </div>
 
       <AddProductModal
@@ -183,9 +225,21 @@ export default function InventoryProducts() {
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
           No products yet. Add one with the button above.
         </p>
+      ) : filteredProducts.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-600">
+          <p>No products found for &quot;{searchQuery.trim()}&quot;.</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            Clear search
+          </button>
+        </div>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
+        <>
+          <ul className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {pagedProducts.map((product) => (
             <li key={product.id}>
               <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
                 <div className="relative aspect-square bg-slate-100">
@@ -229,8 +283,48 @@ export default function InventoryProducts() {
                 </div>
               </article>
             </li>
-          ))}
-        </ul>
+            ))}
+          </ul>
+
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row">
+            <p className="text-sm text-slate-600">
+              Showing{" "}
+              <span className="font-semibold text-slate-900">
+                {Math.min(filteredProducts.length, (safePage - 1) * pageSize + 1)}
+              </span>
+              {"–"}
+              <span className="font-semibold text-slate-900">
+                {Math.min(filteredProducts.length, safePage * pageSize)}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-slate-900">{filteredProducts.length}</span>
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Prev
+              </button>
+
+              <span className="text-sm font-semibold text-slate-800">
+                Page {safePage} of {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
